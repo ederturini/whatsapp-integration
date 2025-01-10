@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 let qrCodeImage = null;
 
-// Inicializa o cliente WhatsApp
+// Inicializa o cliente WhatsApp com LocalAuth
 const client = new Client({
     authStrategy: new LocalAuth()
 });
@@ -22,21 +22,30 @@ client.on('qr', async (qr) => {
 // Evento quando o cliente está pronto
 client.on('ready', () => {
     console.log('WhatsApp conectado!');
-    // Teste: envia uma mensagem de boas-vindas para o número de teste
-    client.sendMessage('<seu-número-aqui>', 'Bot WhatsApp conectado com sucesso!');
 });
 
 // Evento para mensagens recebidas
 client.on('message', (message) => {
     console.log(`Mensagem recebida de ${message.from}: ${message.body}`);
     
-    // Verifica se a mensagem é "olá"
+    // Responde "Olá" automaticamente
     if (message.body.toLowerCase().trim() === 'olá') {
         console.log('Respondendo à mensagem "olá"');
         client.sendMessage(message.from, 'Olá! Como posso ajudar?');
     } else {
         console.log('Mensagem recebida não corresponde ao esperado.');
     }
+});
+
+// Lida com desconexões e tenta reconectar automaticamente
+client.on('disconnected', (reason) => {
+    console.log('WhatsApp desconectado:', reason);
+    client.initialize();
+});
+
+// Evento para falha de autenticação
+client.on('auth_failure', (msg) => {
+    console.error('Falha de autenticação:', msg);
 });
 
 // Inicializa o cliente
@@ -58,7 +67,10 @@ app.get('/qr', (req, res) => {
 
 // Endpoint para verificar o status da API
 app.get('/status', (req, res) => {
-    res.send('API funcionando! WhatsApp conectado? ' + (client.info ? 'Sim' : 'Não'));
+    res.json({
+        status: 'API funcionando',
+        whatsappConectado: client.info ? true : false
+    });
 });
 
 // Inicia o servidor
